@@ -1,4 +1,4 @@
-ebin
+*.beam
 doc
 *.swp
 *.dump
