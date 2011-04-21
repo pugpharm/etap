@@ -1,8 +1,8 @@
 {application, etap, [
     {description, "Erlang Test Anything Protocol"},
-    {vsn, "0.3.4"},
+    {vsn, "0.4.0"},
     {modules, [
-		etap
+		etap, etap_report
     ]},
     {registered, []},
     {applications, [kernel, stdlib]}
