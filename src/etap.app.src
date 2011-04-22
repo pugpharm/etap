@@ -2,7 +2,7 @@
     {description, "Erlang Test Anything Protocol"},
     {vsn, "0.4.0"},
     {modules, [
-		etap, etap_report
+    		etap, etap_report, etap_exception
     ]},
     {registered, []},
     {applications, [kernel, stdlib]}
