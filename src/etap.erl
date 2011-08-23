@@ -44,7 +44,7 @@
 %% a number of etap tests and then calling eta:end_tests/0. Please refer to
 %% the Erlang modules in the t directory of this project for example tests.
 -module(etap).
--vsn("0.3.4").
+-vsn("0.4.1")
 
 -export([
     ensure_test_server/0,
@@ -64,6 +64,12 @@
     bail/0, bail/1,
     test_state/0, failure_count/0
 ]).
+
+-export([ 
+    ensure_coverage_starts/0, 
+    ensure_coverage_ends/0, 
+    coverage_report/0
+  ]).
 
 -export([
     contains_ok/3,
@@ -104,7 +110,7 @@
 %%       Result = ok
 %% @doc Create a test plan and boot strap the test server.
 plan(unknown) ->
-    %ensure_coverage_starts(),
+    ensure_coverage_starts(),
     ensure_test_server(),
     etap_server ! {self(), plan, unknown},
     ok;
@@ -113,7 +119,7 @@ plan(skip) ->
 plan({skip, Reason}) ->
     io:format("1..0 # skip ~s~n", [Reason]);
 plan(N) when is_integer(N), N > 0 ->
-    %ensure_coverage_starts(),
+    ensure_coverage_starts(),
     ensure_test_server(),
     etap_server ! {self(), plan, N},
     ok.
@@ -122,7 +128,7 @@ plan(N) when is_integer(N), N > 0 ->
 %% @doc End the current test plan and output test results.
 %% @todo This should probably be done in the test_server process.
 end_tests() ->
-    %ensure_coverage_ends(),
+    ensure_coverage_ends(),
     case whereis(etap_server) of
         undefined -> self() ! true;
         _ -> etap_server ! {self(), state}
@@ -139,12 +145,50 @@ end_tests() ->
         _ -> etap_server ! done, ok
     end.
 
+%% @private
+ensure_coverage_starts() ->
+    case os:getenv("COVER") of
+        false -> ok;
+        _ ->
+            BeamDir = case os:getenv("COVER_BIN") of false -> "ebin"; X -> X end,
+            cover:compile_beam_directory(BeamDir)
+    end.
+
+%% @private
+%% @doc Attempts to write out any collected coverage data to the cover/
+%% directory. This function should not be called externally, but it could be.
+ensure_coverage_ends() ->
+    case os:getenv("COVER") of
+        false -> ok;
+        _ ->
+            filelib:ensure_dir("cover/"),
+            Name = lists:flatten([
+                io_lib:format("~.16b", [X]) || X <- binary_to_list(erlang:md5(
+                     term_to_binary({make_ref(), now()})
+                ))
+            ]),
+            cover:export("cover/" ++ Name ++ ".coverdata")
+    end.
+
+%% @spec coverage_report() -> ok
+%% @doc Use the cover module's covreage report builder to create code coverage
+%% reports from recently created coverdata files.
+coverage_report() ->
+    [cover:import(File) || File <- filelib:wildcard("cover/*.coverdata")],
+    lists:foreach(
+        fun(Mod) ->
+            cover:analyse_to_file(Mod, atom_to_list(Mod) ++ "_coverage.txt", [])
+        end,
+        cover:imported_modules()
+    ),
+    ok.
+
 bail() ->
     bail("").
 
 bail(Reason) ->
     etap_server ! {self(), diag, "Bail out! " ++ Reason},
-    %ensure_coverage_ends(),
+    ensure_coverage_ends(),
     etap_server ! done, ok,
     ok.
 
