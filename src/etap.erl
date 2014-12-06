@@ -44,7 +44,7 @@
 %% a number of etap tests and then calling eta:end_tests/0. Please refer to
 %% the Erlang modules in the t directory of this project for example tests.
 -module(etap).
--vsn("0.4.1")
+-vsn("0.4.1").
 
 -export([
     ensure_test_server/0,
